@@ -17,11 +17,22 @@ export function AuthProvider({ children }) {
   }, []);
 
   // PUBLIC_INTERFACE
+  /**
+   * Attempts anonymous login and sets the displayName.
+   * If already authenticated, updates displayName if needed.
+   * @param {string} username The chosen username (already validated by UI)
+   */
   async function login(username) {
-    // Anonymous auth, set username for displayName
-    let cred = await signInAnonymously(auth);
-    await updateProfile(cred.user, { displayName: username });
-    setUser(auth.currentUser);
+    if (!auth.currentUser) {
+      // Not signed in, do anonymous sign-in
+      let cred = await signInAnonymously(auth);
+      await updateProfile(cred.user, { displayName: username });
+      setUser({ ...cred.user }); // ensure force update with new displayName
+    } else {
+      // Already signed-in (should rarely happen on login page), just update
+      await updateProfile(auth.currentUser, { displayName: username });
+      setUser({ ...auth.currentUser });
+    }
   }
   // PUBLIC_INTERFACE
   function logout() {

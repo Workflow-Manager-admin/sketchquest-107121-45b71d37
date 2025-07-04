@@ -6,11 +6,23 @@ import { useNavigate } from "react-router-dom";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { ref, uploadString, getDownloadURL } from "firebase/storage";
 
-// PROMPTS
+/**
+ * PROMPTS
+ * Curated animal (and bird/reptile/insect) prompt list as clues for drawing game.
+ * Only animals/nature: e.g. "monkey", "sparrow", "crab", etc.
+ */
 const prompts = [
-  "Lion", "Eagle", "Turtle", "Dolphin", "Frog", "Crocodile", "Parrot", "Wolf",
-  "Penguin", "Cobra", "Cheetah", "Snake", "Sparrow", "Rabbit", "Lizard",
-  "Gorilla", "Swan", "Peacock", "Panther", "Otter", "Panda", "Alligator"
+  "Monkey", "Sparrow", "Crab",
+  "Lion", "Tiger", "Crocodile", "Frog", "Elephant", "Rabbit",
+  "Alligator", "Octopus", "Bear", "Penguin", "Giraffe", "Hippo",
+  "Dolphin", "Wolf", "Parrot", "Goose", "Duck", "Snail",
+  "Swan", "Panther", "Otter", "Panda", "Gorilla", "Peacock",
+  "Turtle", "Hawk", "Shark", "Eagle", "Zebra", "Moose", "Camel",
+  "Pelican", "Toad", "Buffalo", "Chameleon", "Orangutan", "Antelope",
+  "Bat", "Crow", "Swan", "Cricket", "Lizard",
+  "Beetle", "Seahorse", "Mole", "Pigeon", "Jellyfish", "Koala", "Kangaroo",
+  "Shrew", "Seal", "Ostrich", "Kookaburra", "Owl", "Vulture", 
+  "Butterfly", "Caterpillar", "Raccoon", "Hedgehog", "Armadillo"
 ];
 
 // --- Canvas Drawing Logic ---
