@@ -1,9 +1,27 @@
 import React, { createContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect } from "react";
 import { auth } from "../firebase";
-import { signInAnonymously, onAuthStateChanged, updateProfile } from "firebase/auth";
+import { signInWithCustomToken, onAuthStateChanged, updateProfile } from "firebase/auth";
 
 // PUBLIC_INTERFACE
 export const AuthContext = createContext();
+
+/**
+ * Calls the backend to request an admin-generated Firebase custom token for anonymous login.
+ * @param {string} username 
+ * @returns {Promise<{token: string, uid: string}>}
+ */
+async function callBackendAnonymousLogin(username) {
+  const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || "http://localhost:5001"}/api/login-anonymous`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ displayName: username })
+  });
+  if (!res.ok) {
+    throw new Error("Failed to log in anonymously. Try again later.");
+  }
+  return res.json();
+}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState();
@@ -18,66 +36,30 @@ export function AuthProvider({ children }) {
 
   // PUBLIC_INTERFACE
   /**
-   * Attempts anonymous login and sets the displayName.
-   * If already authenticated, updates displayName if needed.
+   * Attempts anonymous login by calling the backend to create and sign in with a custom token,
+   * and sets the displayName in Firebase.
    * @param {string} username The chosen username (already validated by UI)
-   */
-  /**
-   * Attempts anonymous login and sets the displayName.
-   * If already authenticated, updates displayName if needed.
-   * Enhanced to throw on Firebase config/misconfig errors.
    */
   async function login(username) {
     try {
-      // If missing firebase config, throw explicitly so frontend shows better error
-      if (
-        (typeof auth === "undefined") ||
-        !auth.app ||
-        !auth.app.options ||
-        Object.values(auth.app.options).some(
-          v => typeof v === "string" && v.includes("_HERE")
-        )
-      ) {
-        throw new Error(
-          "Firebase not configured: Check src/firebase.js for correct keys. " +
-          "Visit Firebase Console > Project Settings > General > Your Apps " +
-          "and copy your actual config into src/firebase.js or use .env.local variables."
-        );
-      }
+      // receive custom token from backend, then use it to sign in
+      const { token, uid } = await callBackendAnonymousLogin(username);
 
-      if (!auth.currentUser) {
-        // Not signed in, do anonymous sign-in
-        let cred = await signInAnonymously(auth);
+      const cred = await signInWithCustomToken(auth, token);
+      if (cred && cred.user && cred.user.displayName !== username) {
         await updateProfile(cred.user, { displayName: username });
-        setUser({ ...cred.user }); // ensure force update with new displayName
-      } else {
-        // Already signed-in (should rarely happen on login page), just update
-        await updateProfile(auth.currentUser, { displayName: username });
-        setUser({ ...auth.currentUser });
       }
+      setUser({ ...cred.user, displayName: username });
     } catch (e) {
-      // Log full error for diagnostics
-      // eslint-disable-next-line no-console
-      console.error("Login error:", e);
-
       // Compose more actionable error to surface to UI
       let msg = "Login failed: ";
-      // Firebase error object may have these fields
       if (e.code) {
         msg += `[${e.code}] `;
       }
       if (e.message) {
         msg += e.message;
       }
-      // Sometimes helpful config info (for dev/admin)
-      if (auth && auth.app && auth.app.options) {
-        msg += "\nFirebase projectId: " + auth.app.options.projectId;
-        msg += "\nAuth domain: " + auth.app.options.authDomain;
-      }
-      // Throw an enriched Error that contains the Firebase error `code` for showing to the UI.
-      const error = new Error(msg);
-      error.code = e.code || undefined;
-      throw error;
+      throw new Error(msg);
     }
   }
   // PUBLIC_INTERFACE
