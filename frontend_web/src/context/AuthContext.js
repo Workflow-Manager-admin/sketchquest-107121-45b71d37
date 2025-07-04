@@ -15,26 +15,55 @@ export const AuthContext = createContext();
  * @param {string} username
  * @returns {Promise<{token: string, uid: string}>}
  */
+/**
+ * Makes a POST request to the backend to perform anonymous login and receive a Firebase custom token.
+ * Surfaces network/CORS errors in more detail for easier debugging.
+ * @param {string} username
+ * @returns {Promise<{token: string, uid: string}>}
+ */
 async function callBackendAnonymousLogin(username) {
-  const endpoint = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:5001"}/api/auth/anonymous-login`;
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ displayName: username })
-  });
-  if (!res.ok) {
-    // Try to extract error message
-    const contentType = res.headers.get("content-type") || "";
-    let serverError = "Failed to log in anonymously. Try again later.";
-    if (contentType.includes("application/json")) {
-      const json = await res.json();
-      if (json && json.error) {
-        serverError = json.error;
+  // Determine backend URL: allows .env override, else defaults to http://localhost:5001
+  const endpoint =
+    (process.env.REACT_APP_BACKEND_URL
+      ? process.env.REACT_APP_BACKEND_URL.replace(/\/$/, "")
+      : "http://localhost:5001") + "/api/auth/anonymous-login";
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // Allows cookies if needed
+      body: JSON.stringify({ displayName: username })
+    });
+    if (!res.ok) {
+      // Try to extract error message
+      const contentType = res.headers.get("content-type") || "";
+      let serverError = "Failed to log in anonymously. Try again later.";
+      if (contentType.includes("application/json")) {
+        const json = await res.json();
+        if (json && json.error) {
+          serverError = json.error;
+        }
       }
+      throw new Error(serverError);
     }
-    throw new Error(serverError);
+    return res.json();
+  } catch (e) {
+    // Handle fetch-level error, usually 'Failed to fetch' due to CORS/network/down server
+    // (TypeError or a string like "Failed to fetch")
+    let extraMsg = "";
+    if (
+      typeof e === "object" &&
+      e instanceof TypeError &&
+      e.message &&
+      /fetch/i.test(e.message)
+    ) {
+      extraMsg =
+        " (Possible connectivity, CORS, or server-down issue. Make sure the backend server is running at " +
+        endpoint +
+        " and is accessible from the browser. If running locally, verify CORS settings and that there are no firewalls or port conflicts.)";
+    }
+    throw new Error("Anonymous login failed: " + (e.message || e) + extraMsg);
   }
-  return res.json();
 }
 
 export function AuthProvider({ children }) {

@@ -8,10 +8,38 @@ const PORT = process.env.PORT || 5001;
 
 /**
  * Configure CORS to allow frontend access (custom origin or all for dev).
+ * For dev, allow localhost:3000 and local IPs; for prod, use env setting for tighter control.
  */
+const devOrigins = [
+  "http://localhost:3000",
+  "https://localhost:3000",
+  /^http:\/\/127\.0\.0\.1:\d+$/,
+  /^http:\/\/192\.168\.\d+\.\d+:\d+$/,
+  /^https?:\/\/.*\.kavia\.ai(:\d+)?$/, // For cloud/kavia preview URLs if needed
+];
+
+const prodOrigin = process.env.CORS_ALLOWED_ORIGIN;
+
 const corsOptions = {
-  origin: process.env.CORS_ALLOWED_ORIGIN || "http://localhost:3000",
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (e.g., mobile apps, curl)
+    if (!origin) return callback(null, true);
+    if (
+      prodOrigin && prodOrigin !== "dev"
+        ? origin === prodOrigin
+        : devOrigins.some(o => (typeof o === "string" ? o === origin : o.test(origin)))
+    ) {
+      return callback(null, true);
+    }
+    return callback(
+      new Error(
+        `CORS: Origin ${origin} not allowed. Set CORS_ALLOWED_ORIGIN env or use 'dev' for open localhost/dev mode.`
+      ),
+      false
+    );
+  },
+  credentials: true,
+  optionsSuccessStatus: 204,
 };
 app.use(cors(corsOptions));
 app.use(express.json());
