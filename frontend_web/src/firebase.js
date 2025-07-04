@@ -16,13 +16,14 @@ import { getStorage } from "firebase/storage";
  * "Couldn't login... try again?" due to missing/invalid project credentials.
  */
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY || "YOUR_API_KEY_HERE",
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN || "YOUR_AUTH_DOMAIN_HERE",
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID_HERE",
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET || "YOUR_STORAGE_BUCKET_HERE",
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID || "YOUR_SENDER_ID_HERE",
-  appId: process.env.REACT_APP_FIREBASE_APP_ID || "YOUR_APP_ID_HERE",
-  measurementId: process.env.REACT_APP_FIREBASE_MEASUREMENT_ID || "YOUR_MEASUREMENT_ID_HERE"
+  // Use literal config for user-provided debugging & clarity:
+  apiKey: "AIzaSyBNA7xaoiynpwD8j3rE3qB9-daUnmDIbno",
+  authDomain: "doodlefinder.firebaseapp.com",
+  projectId: "doodlefinder",
+  storageBucket: "doodlefinder.appspot.com", // corrected typo if any
+  messagingSenderId: "306458973633",
+  appId: "1:306458973633:web:5862a96764e4bd75a6cb40",
+  measurementId: "G-2H7VRGX2VY"
 };
 
 const app = initializeApp(firebaseConfig);
