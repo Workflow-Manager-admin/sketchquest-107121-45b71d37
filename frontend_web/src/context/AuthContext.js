@@ -57,10 +57,27 @@ export function AuthProvider({ children }) {
       }
     } catch (e) {
       // Log full error for diagnostics
-      // Optionally, you could send e.message to some bug report system here
       // eslint-disable-next-line no-console
       console.error("Login error:", e);
-      throw e;
+
+      // Compose more actionable error to surface to UI
+      let msg = "Login failed: ";
+      // Firebase error object may have these fields
+      if (e.code) {
+        msg += `[${e.code}] `;
+      }
+      if (e.message) {
+        msg += e.message;
+      }
+      // Sometimes helpful config info (for dev/admin)
+      if (auth && auth.app && auth.app.options) {
+        msg += "\nFirebase projectId: " + auth.app.options.projectId;
+        msg += "\nAuth domain: " + auth.app.options.authDomain;
+      }
+      // Throw an enriched Error that contains the Firebase error `code` for showing to the UI.
+      const error = new Error(msg);
+      error.code = e.code || undefined;
+      throw error;
     }
   }
   // PUBLIC_INTERFACE

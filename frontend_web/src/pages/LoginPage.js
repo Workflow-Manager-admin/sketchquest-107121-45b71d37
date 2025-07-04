@@ -128,8 +128,22 @@ function LoginPage() {
       await login(username.replace(/\s+/g, '_'));
       nav("/");
     } catch (e) {
-      if (e.message && e.message.includes("Firebase not configured")) {
+      // Exact Firebase error codes for anonymous login issues
+      if (e.code === "auth/operation-not-allowed") {
+        setError("Anonymous login is not enabled for this Firebase project. Admin: Go to Firebase Console > Authentication > Sign-in method and ENABLE Anonymous Auth.");
+      } else if (e.code === "auth/invalid-api-key") {
+        setError("Invalid API key: Check your Firebase config in src/firebase.js or .env.local.");
+      } else if (e.code === "auth/network-request-failed") {
+        setError("Network error contacting Firebase – are you online?");
+      } else if (e.message && e.message.includes("Firebase not configured")) {
         setError("Login failed – Firebase is not configured. Ask the site admin to check the setup.");
+      } else if (e.message && /authDomain|projectId|domain/i.test(e.message)) {
+        setError("Auth domain not allowed. Admin: Add '" +
+          window.location.hostname +
+          "' to Firebase Console > Authentication > Settings > Authorized domains.");
+      } else if (e.message) {
+        // Show Firebase error with code if present
+        setError(e.message.replace(/^Login failed: /, ""));
       } else {
         setError("Couldn't login... try again?");
       }
