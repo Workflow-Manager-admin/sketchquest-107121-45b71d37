@@ -6,7 +6,14 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-app.use(cors());
+/**
+ * Configure CORS to allow frontend access (custom origin or all for dev).
+ */
+const corsOptions = {
+  origin: process.env.CORS_ALLOWED_ORIGIN || "http://localhost:3000",
+  credentials: true
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 
 /**
@@ -30,10 +37,12 @@ const openapiTags = [
 
 /**
  * @swagger
- * /api/login-anonymous:
+ * /api/auth/anonymous-login:
  *   post:
- *     summary: Anonymous login for on-boarding user.
- *     description: Authenticates the user anonymously using Firebase Admin SDK and returns a custom auth token.
+ *     summary: Perform anonymous login via backend and return Firebase custom token.
+ *     description: |
+ *       Generates an anonymous Firebase user using the Admin SDK, returns a custom token for frontend authentication.
+ *       Takes a displayName (optional) from the body to label the user.
  *     tags:
  *       - Authentication
  *     requestBody:
@@ -49,7 +58,7 @@ const openapiTags = [
  *            required: false
  *     responses:
  *       200:
- *         description: Returns a custom token and UID for the authenticated session.
+ *         description: Successful. Returns Firebase custom token and UID.
  *         content:
  *           application/json:
  *             schema:
@@ -57,38 +66,58 @@ const openapiTags = [
  *               properties:
  *                 token:
  *                   type: string
- *                   description: Firebase custom auth token for frontend auth.
+ *                   description: Firebase custom token for frontend authentication.
  *                 uid:
  *                   type: string
- *                   description: The UID of the anonymous user.
+ *                   description: Firebase user UID.
  *       500:
- *         description: Error occurred during anonymous login.
+ *         description: Internal server error.
  */
+app.post('/api/auth/anonymous-login', async (req, res) => {
+  try {
+    const { displayName } = req.body || {};
+    // Create a new anonymous user with optional displayName
+    let userRecord;
+    try {
+      userRecord = await admin.auth().createUser({
+        displayName: displayName || undefined
+      });
+    } catch (err) {
+      // If duplicate, fallback to creating a plain anonymous user
+      if (err.code === 'auth/uid-already-exists' || err.code === 'auth/email-already-exists') {
+        userRecord = await admin.auth().createUser({});
+      } else {
+        throw err;
+      }
+    }
+    // Issue a custom token for this user
+    const token = await admin.auth().createCustomToken(userRecord.uid);
+    return res.status(200).json({ token, uid: userRecord.uid });
+  } catch (e) {
+    return res.status(500).json({ error: e.message || "Failed to login anonymously." });
+  }
+});
+
+// (Legacy) Also keep /api/login-anonymous route for backward compatibility
 app.post('/api/login-anonymous', async (req, res) => {
   try {
-    // Anonymous sign-in: create user record (if not present)
-    // Optionally provide displayName if sent by client
     const { displayName } = req.body || {};
-    const userRecord = await admin.auth().createUser({
-      displayName: displayName || null,
-      // The uid will be auto-generated.
-    }).catch(async (err) => {
-      // If user exists with same displayName, fallback: just create an anon user without name.
+    let userRecord;
+    try {
+      userRecord = await admin.auth().createUser({
+        displayName: displayName || undefined
+      });
+    } catch (err) {
       if (err.code === 'auth/uid-already-exists' || err.code === 'auth/email-already-exists') {
-        return admin.auth().createUser({});
+        userRecord = await admin.auth().createUser({});
+      } else {
+        throw err;
       }
-      throw err;
-    });
-
-    // Issue a Firebase custom token for the client to log in with on frontend
+    }
     const token = await admin.auth().createCustomToken(userRecord.uid);
-    res.json({
-      token,
-      uid: userRecord.uid
-    });
+    return res.status(200).json({ token, uid: userRecord.uid });
   } catch (e) {
-    // Firebase Admin SDK issues, credential problems, DB errors, etc.
-    res.status(500).json({ error: e.message || 'Failed to login anonymously.' });
+    return res.status(500).json({ error: e.message || "Failed to login anonymously." });
   }
 });
 

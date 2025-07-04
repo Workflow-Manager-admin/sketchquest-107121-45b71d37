@@ -11,14 +11,29 @@ export const AuthContext = createContext();
  * @param {string} username 
  * @returns {Promise<{token: string, uid: string}>}
  */
+/**
+ * Makes a POST request to the backend to perform anonymous login and receive a Firebase custom token.
+ * @param {string} username
+ * @returns {Promise<{token: string, uid: string}>}
+ */
 async function callBackendAnonymousLogin(username) {
-  const res = await fetch(`${process.env.REACT_APP_BACKEND_URL || "http://localhost:5001"}/api/login-anonymous`, {
+  const endpoint = `${process.env.REACT_APP_BACKEND_URL || "http://localhost:5001"}/api/auth/anonymous-login`;
+  const res = await fetch(endpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ displayName: username })
   });
   if (!res.ok) {
-    throw new Error("Failed to log in anonymously. Try again later.");
+    // Try to extract error message
+    const contentType = res.headers.get("content-type") || "";
+    let serverError = "Failed to log in anonymously. Try again later.";
+    if (contentType.includes("application/json")) {
+      const json = await res.json();
+      if (json && json.error) {
+        serverError = json.error;
+      }
+    }
+    throw new Error(serverError);
   }
   return res.json();
 }
