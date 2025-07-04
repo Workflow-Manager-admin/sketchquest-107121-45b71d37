@@ -128,7 +128,11 @@ function LoginPage() {
       await login(username.replace(/\s+/g, '_'));
       nav("/");
     } catch (e) {
-      setError("Couldn't login... try again?");
+      if (e.message && e.message.includes("Firebase not configured")) {
+        setError("Login failed – Firebase is not configured. Ask the site admin to check the setup.");
+      } else {
+        setError("Couldn't login... try again?");
+      }
     } finally {
       setPending(false);
     }
